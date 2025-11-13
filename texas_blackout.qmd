@@ -1,0 +1,273 @@
+---
+title: "Texas Blackout Analysis"
+author: "Richard Montes Lemus"
+date: today
+format: pdf
+editor: source
+---
+
+# Load libraries
+```{r, message=FALSE}
+# Load necessary libraries
+library(here)
+library(tidyverse)
+library(sf)
+library(stars)
+library(tmap)
+library(terra)
+library(viridisLite)
+```
+
+# Load in all data 
+## Read in light raster data
+```{r, message = FALSE}
+# Load in light data before the blackout 
+light_before_1 <- read_stars(here("data","VNP46A1","VNP46A1.A2021038.h08v05.001.2021039064328.tif"))
+
+light_before_2 <- read_stars(here("data","VNP46A1","VNP46A1.A2021038.h08v06.001.2021039064329.tif"))
+```
+
+```{r, message=FALSE}
+# Load in light data after the blackout 
+light_after_1 <- read_stars(here("data","VNP46A1","VNP46A1.A2021047.h08v05.001.2021048091106.tif"))
+
+light_after_2 <- read_stars(here("data","VNP46A1","VNP46A1.A2021047.h08v06.001.2021048091105.tif"))
+```
+
+## Read in road data 
+```{r}
+# Subset to only include highways
+roads <- st_read(here::here("data", "gis_osm_roads_free_1.gpkg"), 
+query = "SELECT * FROM gis_osm_roads_free_1 WHERE fclass='motorway'", quiet = TRUE)
+```
+
+## Read in building data 
+```{r}
+# Subset to only necessary building data
+buildings <- st_read(here::here("data", "gis_osm_buildings_a_free_1.gpkg"), 
+query = "SELECT * FROM gis_osm_buildings_a_free_1 WHERE (type IS NULL AND name IS NULL) OR type in ('residential', 'apartments', 'house', 'static_caravan', 'detached')", quiet = TRUE)
+```
+
+# Generate blackout mask
+```{r}
+# Combine raster tiles for before the blackout 
+light_combined_before <- st_mosaic(light_before_1, light_before_2) 
+```
+
+```{r}
+# Create bounding box for Houston
+houston_bbox <- st_bbox(c(xmin = -96.5, xmax = -94.5, ymin = 29, ymax = 30.5), crs = st_crs(light_combined_before))
+```
+
+
+```{r, warning=FALSE}
+# Crop area to Houston Texas
+houston_before <- st_crop(light_combined_before, y = houston_bbox)
+```
+
+
+```{r}
+# Combine raster tiles for after the blackout 
+light_combined_after <- st_mosaic(light_after_1, light_after_2) 
+```
+
+
+```{r, warning=FALSE}
+# Crop area to Houston Texas
+houston_after <- st_crop(light_combined_after, y = houston_bbox)
+```
+
+```{r}
+# Plot light intensity before storm 
+houston_before_plot  <- tm_shape(houston_before) +
+  tm_raster(palette = viridis(9),
+    style = "cont") + # Continuous scale
+  tm_layout(legend.show = FALSE,
+            title = "Houston Light Intensity Before Storm (Feb. 7th)", 
+            title.size = 0.7) + 
+  tm_compass(position = c("right", "bottom"), size = 1) +
+  tm_scale_bar(position = c("left", "bottom"))
+
+# Plot light intensity after storm 
+houston_after_plot  <- tm_shape(houston_after) +
+  tm_raster(palette = viridis(9), style = "cont") + # Continuous scale
+  tm_layout(legend.show = FALSE, title = "Houston Light Intensity After Storm (Feb. 16th)", title.size = 0.7) + 
+  tm_compass(position = c("right", "bottom"), size = 1) +
+  tm_scale_bar(position = c("left", "bottom"))
+
+# Arrange plots side by side
+tmap_arrange(houston_before_plot, houston_after_plot, nrow =1)
+```
+
+```{r}
+# Create logical variable with true for areas with desired light intensity drop
+light_difference <- (light_combined_before - light_combined_after) > 200
+
+```
+
+```{r}
+# Turn areas that did not meet drop condition into NA
+light_difference[light_difference == FALSE] <- NA # Clipping approach
+```
+
+
+```{r}
+# Turn stars into simple feature to vectorize the raster
+sf_light_diff <- light_difference %>% 
+  st_as_sf() %>%
+  st_make_valid() # Fix geometries
+```
+
+```{r, warning=FALSE}
+# Crop area to Houston Texas
+ht_light_diff <-  st_crop(sf_light_diff, xmin = -96.5, xmax = -94.5, ymin =  29, ymax = 30.5)
+```
+
+```{r}
+# Reproject vector to EPSG:3083 
+if (st_crs(ht_light_diff) != 3083) {
+  warning("coordinate reference systems do not match, transforming them to match")
+  ht_light_diff <- st_transform(ht_light_diff, crs = 3083)
+}
+
+```
+
+# Exclude highways from the cropped blackout mask
+
+```{r}
+# Reproject roads vector to ht_light_diff crs
+if (st_crs(roads) != st_crs(ht_light_diff)) {
+  warning("coordinate reference systems do not match, transforming them to match")
+  roads <- st_transform(roads, crs = st_crs(ht_light_diff))
+}
+```
+```{r}
+# Create buffer object 
+hw_buffer200m <- st_buffer(roads, dist = 200)
+```
+
+```{r}
+# Pull together geometry fragments
+houston_hw_union <- st_union(hw_buffer200m)
+```
+
+```{r, warning=FALSE}
+# Return light intensity vector that is not in buffer
+ht_light_diff_no_hw <- st_difference(ht_light_diff, houston_hw_union)
+```
+# Identify the number of homes likely impacted by blackouts
+
+```{r}
+# Reproject buildings vector to crs of ht_light_diff
+if (st_crs(buildings) != st_crs(ht_light_diff_no_hw)) {
+  warning("coordinate reference systems do not match, transforming them to match")
+  buildings <- st_transform(buildings, crs = st_crs(ht_light_diff_no_hw))
+}
+```
+
+```{r}
+# Return buildings that intersect blackout mask
+homes_in_blackout <- st_filter(buildings, ht_light_diff_no_hw, .predicate = st_intersects)
+```
+
+
+```{r}
+# Quiet autoscaling warnings 
+tmap_options(component.autoscale = FALSE)
+
+# Plot overlapping homes in blackout area
+homes_in_blackout_plot  <- tm_shape(homes_in_blackout) +
+  tm_polygons() +
+  tm_title("Houston Buildings Blackout due to 2021 Storm") + 
+  tm_basemap("OpenStreetMap") + 
+  tm_compass(position = c("right", "bottom"), size = 2) +
+  tm_scalebar(position = c("left", "bottom"))
+
+homes_in_blackout_plot
+```
+
+
+```{r}
+# Calculate number of buildings in blackout mask
+print(paste0("There were ", nrow(homes_in_blackout), " homes that experienced a blackout"))
+
+```
+
+```{r, message=FALSE}
+# Check available layers in census geobatabase
+layers_info <- st_layers(here::here("data", "ACS_2019_5YR_TRACT_48_TEXAS.gdb"))
+```
+
+```{r}
+# Read in census socioeconomic data 
+census_income <- st_read(here::here("data", "ACS_2019_5YR_TRACT_48_TEXAS.gdb"), 
+layer = "X19_INCOME", quiet = TRUE)
+```
+```{r}
+# Read in geometry of census tracts
+census_geom <- st_read(here::here("data", "ACS_2019_5YR_TRACT_48_TEXAS.gdb"), layer = "ACS_2019_5YR_TRACT_48_TEXAS", quiet = TRUE)
+```
+```{r}
+# Left join income attribute onto census tract geometry
+census_income_geom <- left_join(census_geom, census_income, by =c("GEOID_Data" = "GEOID"))
+```
+
+```{r, warning=FALSE}
+# Crop census tract to only contain Houston
+census_income_geom = st_crop(census_income_geom, xmin = -96.5, xmax = -94.5, ymin =  29, ymax = 30.5)
+```
+
+```{r}
+# Reproject census tracts to crs of ht_light_diff
+if (st_crs(census_income_geom) != st_crs(ht_light_diff_no_hw)) {
+  warning("coordinate reference systems do not match, transforming them to match")
+  census_income_geom <- st_transform(census_income_geom, crs = st_crs(ht_light_diff_no_hw))
+}
+```
+
+```{r}
+# Find census tracts within the blackout zone 
+tract_in_blackout <- st_filter(census_income_geom, ht_light_diff_no_hw, .predicate = st_intersects)
+```
+
+```{r}
+# Plot census tracts in blackout zone
+tract_in_blackout_plot  <- tm_shape(tract_in_blackout) +
+  tm_polygons() +
+  tm_title("Houston Census Tract Blackout Due to 2021 Storm") +
+  tm_basemap("OpenStreetMap") +
+   tm_compass(position = c("right", "bottom"), size = 2) +
+  tm_scalebar(position = c("left", "bottom"))
+  
+tract_in_blackout_plot
+```
+
+```{r}
+# Return SF dataframe for census tracts not in blackout zone
+tract_not_in_blackout <- census_income_geom[!census_income_geom$TRACTCE %in% tract_in_blackout$TRACTCE, ]
+```
+
+
+```{r}
+# Create Boxplot Showing Difference in Median Household Income Between Blackout/No Blackout Zones.
+boxplot(
+  tract_in_blackout$B19013e1,
+  tract_not_in_blackout$B19013e1,
+  names = c("In Blackout", "Not in Blackout"),
+  main = "Median Houston Household Income by Blackout Status",
+  ylab = "Median Household Income (USD)",
+  col = c("#BDC", "#BDC"),
+  outline = FALSE
+)
+```
+
+# Analysis
+In February 2021, much of Texas experienced a winter storm that left millions of Texans without power. This analysis focuses on the impacts of this storm on Houston, Texas. The boxplots show a higher median household income for houses that were affected by the blackout compared to houses that weren't. However, according to “Community-scale big data reveals disparate impacts of the Texas winter storm of 2021 and its managed power outage” by Cheng-Chun Lee et al., low-income communities were disproportionately affected by this blackout. The discrepancy between this research and my analysis may be because we could not obtain income figures for individual buildings, so we had to rely on census tract income, which generalizes income across tracts.
+
+Citation: 
+
+Lee CC, Maron M, Mostafavi A. Community-scale big data reveals disparate impacts of the Texas winter storm of 2021 and its managed power outage. Humanit Soc Sci Commun. 2022;9(1):335. doi: 10.1057/s41599-022-01353-8. Epub 2022 Sep 24. PMID: 36187845; PMCID: PMC9510185.
+
+OpenStreetMap Contributors (2025). OpenStreetMap database. Retrieved from <https://www.openstreetmap.org>. Distributed by Geofabrik GmbH, Karlsruhe, Germany. Available at <https://download.geofabrik.de/>
+
+U.S. Census Bureau. (2020). TIGER/Line Shapefiles and American Community Survey 2019 (5-Year Estimates), Texas — Census Tract Level (ACS_2019_5YR_TRACT_48_TEXAS) \[Data set\]. U.S. Department of Commerce. Available from <https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-data.html>
