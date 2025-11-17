@@ -1,6 +1,6 @@
 # Houston Texas Blackout Analysis 
 
-In February 2021, Texas experienced a winter storm with abnormally cold temperatures. This storm wreaked havoc across the state, causing pipes to freeze, crops to fail, and, most visibly, massive power outages. Houston, Texas, experienced a particularly severe blackout due to many homes being connected to the same power grids, which were damaged by the storm. This analysis visualizes the outage by comparing light intensities in Houston on February 7, 2021 (before the storm) and February 16, 2021 (after the storm). Additionally, it maps buildings and census tracts affected by the outage. Then, explores potential environmental injustices by comparing median income between census tracts that experienced and did not experience a blackout.
+In February 2021, Texas experienced a winter storm with abnormally cold temperatures. This storm overwhelmed the state's power infrastructure by freezing wind turbines, damaging natural gas pipes, and causing massive power outages that affected over 4 million people. This analysis visualizes Houston's storm-induced power outage by comparing light intensities between February 7, 2021 (before the storm) and February 16, 2021 (after the storm). Additionally, it maps buildings and census tracts affected by the outage. Then, it explores potential environmental injustices by comparing median incomes between communities that did and did not experience a blackout. 
 
 ### Repository Structure
 ```
@@ -45,4 +45,5 @@ In February 2021, Texas experienced a winter storm with abnormally cold temperat
 |---------------------|
 | Lee CC, Maron M, Mostafavi A. Community-scale big data reveals disparate impacts of the Texas winter storm of 2021 and its managed power outage. Humanit Soc Sci Commun. 2022;9(1):335. doi: 10.1057/s41599-022-01353-8. Epub 2022 Sep 24. PMID: 36187845; PMCID: PMC9510185. https://pubmed.ncbi.nlm.nih.gov/36187845/ 
 | OpenStreetMap contributors (2025). OpenStreetMap [Data set]. OpenStreetMap Foundation. Available as open data under the Open Data Commons Open Database License (ODbL) at <https://www.openstreetmap.org> |
-|U.S. Census Bureau. (2020). TIGER/Line Shapefiles and American Community Survey 2019 (5-Year-Estimates), Texas-Census Tract Level (ACS_2019_5YR_TRACT_48_TEXAS) [Data set]. U.S. Department of Commerce. available at https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-data.html |
+| U.S. Census Bureau. (2020). TIGER/Line Shapefiles and American Community Survey 2019 (5-Year-Estimates), Texas-Census Tract Level (ACS_2019_5YR_TRACT_48_TEXAS) [Data set]. U.S. Department of Commerce. available at https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-data.html |
+| NASA: Earthdata (2021). The Visible Infrared Imaging Radiometer Suite. Retrieved from [https://www.earthdata.nasa.gov/data/instruments/viirs].|
