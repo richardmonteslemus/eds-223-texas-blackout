@@ -78,22 +78,23 @@ houston_after <- st_crop(light_combined_after, y = houston_bbox)
 ```
 
 ```{r}
-# Plot light intensity before storm 
-houston_before_plot  <- tm_shape(houston_before) +
-  tm_raster(palette = viridis(9),
-    style = "cont") + # Continuous scale
+# Plot light intensity before storm
+houston_before_plot <- tm_shape(houston_before) +
+  tm_raster(col.scale = tm_scale_continuous(values = viridis(9))) +
   tm_layout(legend.show = FALSE,
-            title = "Houston Light Intensity Before Storm (Feb. 7th)", 
-            title.size = 0.7) + 
+            title.size = 0.7) +
+  tm_title("Houston Light Intensity Before Storm (Feb. 7th)") +
   tm_compass(position = c("right", "bottom"), size = 1) +
-  tm_scale_bar(position = c("left", "bottom"))
+  tm_scalebar(position = c("left", "bottom"))
 
-# Plot light intensity after storm 
-houston_after_plot  <- tm_shape(houston_after) +
-  tm_raster(palette = viridis(9), style = "cont") + # Continuous scale
-  tm_layout(legend.show = FALSE, title = "Houston Light Intensity After Storm (Feb. 16th)", title.size = 0.7) + 
+# Plot light intensity after storm
+houston_after_plot <- tm_shape(houston_after) +
+  tm_raster(col.scale = tm_scale_continuous(values = viridis(9))) +
+  tm_layout(legend.show = FALSE,
+            title.size = 0.7) +
+  tm_title("Houston Light Intensity After Storm (Feb. 16th)") +
   tm_compass(position = c("right", "bottom"), size = 1) +
-  tm_scale_bar(position = c("left", "bottom"))
+  tm_scalebar(position = c("left", "bottom"))
 
 # Arrange plots side by side
 tmap_arrange(houston_before_plot, houston_after_plot, nrow =1)
@@ -172,16 +173,25 @@ homes_in_blackout <- st_filter(buildings, ht_light_diff_no_hw, .predicate = st_i
 
 
 ```{r}
-# Quiet autoscaling warnings 
+# Add dummy column to make legend 
+homes_in_blackout$category <- "Blackout Area"
+
 tmap_options(component.autoscale = FALSE)
 
 # Plot overlapping homes in blackout area
-homes_in_blackout_plot  <- tm_shape(homes_in_blackout) +
-  tm_polygons() +
+homes_in_blackout_plot <- tm_shape(homes_in_blackout) +
+  tm_polygons(
+    fill = "category",      # Use the category variable
+    fill.scale = tm_scale_categorical(values = "black"),  
+    fill.legend = tm_legend(title = "Affected Buildings"),
+    col = "black",
+    lwd = 0.5
+  ) +
   tm_title("Houston Buildings Blackout due to 2021 Storm") + 
   tm_basemap("OpenStreetMap") + 
   tm_compass(position = c("right", "bottom"), size = 2) +
-  tm_scalebar(position = c("left", "bottom"))
+  tm_scalebar(position = c("left", "bottom")) +
+  tm_layout(legend.position = c("right", "top"))
 
 homes_in_blackout_plot
 ```
@@ -230,17 +240,29 @@ if (st_crs(census_income_geom) != st_crs(ht_light_diff_no_hw)) {
 tract_in_blackout <- st_filter(census_income_geom, ht_light_diff_no_hw, .predicate = st_intersects)
 ```
 
+
 ```{r}
+# Add dummy column to make legend 
+tract_in_blackout$status <- "Affected Census Tracts"
+
 # Plot census tracts in blackout zone
-tract_in_blackout_plot  <- tm_shape(tract_in_blackout) +
-  tm_polygons() +
+tract_in_blackout_plot <- tm_shape(tract_in_blackout) +
+  tm_polygons(
+    fill = "status",
+    fill.scale = tm_scale_categorical(values = "gray70"),
+    fill.legend = tm_legend(title = "Blackout Areas"),
+    col = "black",
+    lwd = 0.5
+  ) +
   tm_title("Houston Census Tract Blackout Due to 2021 Storm") +
   tm_basemap("OpenStreetMap") +
-   tm_compass(position = c("right", "bottom"), size = 2) +
-  tm_scalebar(position = c("left", "bottom"))
+  tm_compass(position = c("right", "bottom"), size = 2) +
+  tm_scalebar(position = c("left", "bottom")) +
+  tm_layout(legend.position = c("right", "top"))
   
 tract_in_blackout_plot
 ```
+
 
 ```{r}
 # Return SF dataframe for census tracts not in blackout zone
