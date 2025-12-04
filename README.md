@@ -20,7 +20,7 @@ In February 2021, Texas experienced a winter storm with abnormally cold temperat
 ```
 ### Folder Descriptions: 
 
-Data can be accessed [here](https://drive.google.com/file/d/1bTk62xwOzBqWmmT791SbYbHxnCdjmBtw/view). 
+Data can be accessed [here](https://drive.google.com/file/d/1bTk62xwOzBqWmmT791SbYbHxnCdjmBtw/view)
 
 
 /data:
