@@ -20,6 +20,7 @@ In February 2021, Texas experienced a winter storm with abnormally cold temperat
 ```
 ### Folder Descriptions: 
 
+Data can be accessed [here](https://drive.google.com/file/d/1bTk62xwOzBqWmmT791SbYbHxnCdjmBtw/view). 
 /data:
 * ACS_2019_5YR_TRACT_48_TEXAS.gdb: Census tract geometry and attribute data for Texas.
 * gis_osm_buildings_a_free_1.gpkg: Houston building geometry and attribute data
